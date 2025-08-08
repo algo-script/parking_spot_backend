@@ -5,6 +5,7 @@ require('dotenv').config();
 
 const { connectDB } = require('./db/connectDb');
 const userRoutes = require('./routes/userRoutes');
+const { documentsPath } = require('./multer/multerconfig');
 // const { documentsPath } = require('./multerconfig/upload')
 connectDB();
 
@@ -20,7 +21,7 @@ app.use(cors({
 }));
 app.use(express.json());
 // app.use(express.static(path.join(__dirname, '../public')));
-// app.use(express.static(documentsPath))
+app.use(express.static(documentsPath))
 
 
 app.use('/api/user', userRoutes);

@@ -34,6 +34,12 @@ const UserSchema = new mongoose.Schema({
     type: String,
     required: true,
     unique: true,
+  },
+  profileImage:{
+    type: String
+  },
+  responseTime:{
+    type: String
   }
   
 }, { timestamps: true });

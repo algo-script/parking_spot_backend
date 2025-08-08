@@ -1,8 +1,8 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const User = require('../model/user');
 
 // Middleware to verify JWT and attach user to request
-const protect = async (req, res, next) => {
+const authenticateToken = async (req, res, next) => {
   let token;
 
   // Check for Authorization header with Bearer token
@@ -27,6 +27,25 @@ const protect = async (req, res, next) => {
   }
 };
 
+const optionalAuth = async(req, res, next) => {
+  const authHeader = req.headers.authorization;
+
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    const token = authHeader.split(" ")[1];
+
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const user = await User.findById(decoded.id).select('-password');
+      req.user = user; // attach user info to request
+    } catch (err) {
+      console.log("Invalid token, skipping user attachment.");
+    }
+  }
+
+  // Move to next middleware regardless of token validity
+  next();
+};
+
 // Middleware to allow only specific roles (e.g. Admin)
 const authorizeRoles = (...roles) => {
   return (req, res, next) => {
@@ -37,4 +56,4 @@ const authorizeRoles = (...roles) => {
   };
 };
 
-module.exports = { protect, authorizeRoles };
+module.exports = { authenticateToken, authorizeRoles,optionalAuth };
