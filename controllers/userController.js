@@ -45,10 +45,12 @@ exports.loginUser = async (req, res) => {
     });
 
     if (!user || !(await user.comparePassword(password))) {
-      return res.status(401).json({ message: "Invalid credentials" });
+      return res.status(401).json({  success: false,message: "Invalid credentials" });
     }
 
     res.json({
+      success: true,
+      message: `${user.role} login sucessfully`,
       role: user.role,
       token: generateToken(user._id),
     });

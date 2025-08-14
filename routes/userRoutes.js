@@ -5,6 +5,7 @@ const { upload } = require('../multer/multerconfig');
 const { registerUser, loginUser, updateUserProfile, getUserProfile, changePassword } = require('../controllers/userController');
 const { addParkingSpots, updateParkingSpots, getParkingSpots, updateParkingSpotTimeAvailability, toggleAvailability, findNearbyParkingSpots, getParkingSpotById } = require('../controllers/parkingspotController');
 const { addVehicle, getVehiclesByUser, updateVehicle, setDefaultVehicle } = require('../controllers/vehicleController');
+const { confirmBooking, getuserBooking, cancelBooking } = require('../controllers/bookingController');
 
 //User routes
 router.post('/register', registerUser);
@@ -27,6 +28,11 @@ router.post("/addvehicle",authenticateToken,addVehicle)
 router.get("/getUser-vehicle",authenticateToken,getVehiclesByUser)
 router.post("/upadate-vehicle",authenticateToken,updateVehicle)
 router.post("/set-defaultvehicle",authenticateToken,setDefaultVehicle)
+
+//Booking routes
+router.post("/confirmbooking",authenticateToken,confirmBooking)
+router.get("/getuserBooking",authenticateToken,getuserBooking)
+router.post("/cancelBooking",authenticateToken,cancelBooking)
 
 
 module.exports = router;

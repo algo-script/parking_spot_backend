@@ -40,7 +40,8 @@ exports.addVehicle = async (req, res) => {
 
   exports.getVehiclesByUser = async (req, res) => {
     try {
-      const vehicles = await Vehicle.find({ userId:req.user._id }).sort({ createdAt: -1 });
+      const vehicles = await Vehicle.find({ userId:req.user._id }).sort({  defaultVehicle: -1,createdAt: -1 });
+      
       res.status(200).json({ success: true, data: vehicles });
     } catch (error) {
       res.status(500).json({ success: false, message: 'Server error', error: error.message });
@@ -52,7 +53,6 @@ exports.addVehicle = async (req, res) => {
     try {
       // const { id } = req.params;
       const { vehicleNumber, type, brand, model, color, isElectric, defaultVehicle ,currentVehicleId} = req.body;
-      console.log(req.body)
   
       // Validate vehicle ID
       if (!currentVehicleId) {

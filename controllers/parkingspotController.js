@@ -1,6 +1,7 @@
 const moment = require("moment");
 const ParkingSpot = require("../model/parkingSpot");
 const User = require("../model/user");
+const Booking = require("../model/booking")
 
 
 
@@ -235,16 +236,51 @@ const TIME_SLOTS = {
     }
   }
   
+  // exports.getParkingSpots = async (req, res) => {
+  //   try {
+  //     const userId = req.user.id;
+  //     const parkingSpots = await ParkingSpot.find({ user: userId });
+  
+  //     res.status(200).json({ status: true, data: parkingSpots });
+  //   } catch (error) {
+  //     res
+  //       .status(500)
+  //       .json({ message: "failed to get spotData", error: error.message });
+  //   }
+  // };
   exports.getParkingSpots = async (req, res) => {
     try {
       const userId = req.user.id;
-      const parkingSpots = await ParkingSpot.find({ user: userId });
+      
+      // Fetch parking spots owned by the user
+      const parkingSpots = await ParkingSpot.find({ user: userId }).lean();
   
-      res.status(200).json({ status: true, data: parkingSpots });
+      // Get current date for filtering upcoming bookings
+      const currentDate = moment().startOf('day').toDate(); // Normalize to start of day
+  
+      // Fetch upcoming bookings for the user's parking spots
+      const parkingSpotIds = parkingSpots.map(spot => spot._id);
+      const upcomingBookings = await Booking.find({
+        parkingSpot: { $in: parkingSpotIds },
+        date: { $gte: currentDate },
+        status: { $in: ['pending', 'confirmed'] }
+      }).select('bookingId parkingSpot date startTime endTime duration totalAmount status')
+      .populate('user', 'name').lean() ;
+  
+      // Map parking spots to include their upcoming bookings with formatted dates
+      const parkingSpotsWithBookings = parkingSpots.map(spot => ({
+        ...spot,
+        upcomingBookings: upcomingBookings
+          .filter(booking => booking.parkingSpot === spot._id)
+          .map(booking => ({
+            ...booking,
+            date: moment(booking.date).format('YYYY-MM-DD') // Format date using Moment.js
+          }))
+      }));
+  
+      res.status(200).json({ status: true, data: parkingSpotsWithBookings });
     } catch (error) {
-      res
-        .status(500)
-        .json({ message: "failed to get spotData", error: error.message });
+      res.status(500).json({ message: "Failed to get parking spot data", error: error.message });
     }
   };
   
@@ -316,10 +352,11 @@ const TIME_SLOTS = {
         .json({ message: "Failed to toggleAvailability", error: error.message });
     }
   };
-  
+ 
   exports.findNearbyParkingSpots = async (req, res) => {
     try {
       const now = moment(); // current time
+      // console.log(now)
       const weekdays = [
         "sunday",
         "monday",
@@ -370,11 +407,6 @@ const TIME_SLOTS = {
       };
       query.$or = [];
   
-      // Add price filter if provided
-      if (maxPrice && !isNaN(maxPrice)) {
-        query.hourlyRate = { $lte: parseFloat(maxPrice) };
-      }
-  
       // Optional price filter
       if (maxPrice && !isNaN(maxPrice)) {
         query.hourlyRate = { $lte: parseFloat(maxPrice) };
@@ -403,7 +435,8 @@ const TIME_SLOTS = {
         query.user = { $ne: req.user._id };
       }
       // Find parking spots within 500 meters
-      const parkingSpots = await ParkingSpot.find(query).select(
+      const parkingSpots = await ParkingSpot.find(query).
+      select(
         "name address location.coordinates timeAvailability hourlyRate isCovered size description images isAvailable"
       );
   
@@ -422,7 +455,6 @@ const TIME_SLOTS = {
       const { spotId } = req.params;
       // console.log("spotId",spotId)
       const spot = await ParkingSpot.findById(spotId);
-  
       if (!spot) {
         return res.status(404).json({ message: "Parking spot not found" });
       }
@@ -431,11 +463,12 @@ const TIME_SLOTS = {
       const owner = await User.findById(spot.user);
   
       const spotDetails = {
-        id: spot._id,
+        _id: spot._id,
         name: spot.name,
         address: spot.address,
         description: spot.description,
         hourlyRate: spot.hourlyRate,
+        isAvailable:spot.isAvailable,
         dailyRate: Math.round(spot.hourlyRate * 8 * 0.8), // Example calculation for daily rate
         coordinates: {
           lat: spot.location.coordinates[1],
