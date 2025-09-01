@@ -5,6 +5,8 @@ require('dotenv').config();
 
 const { connectDB } = require('./db/connectDb');
 const userRoutes = require('./routes/userRoutes');
+const guardRoutes = require('./routes/guardRoutes')
+const adminRoutes = require('./routes/adminRoutes')
 const { documentsPath } = require('./multer/multerconfig');
 // const { documentsPath } = require('./multerconfig/upload')
 connectDB();
@@ -25,6 +27,8 @@ app.use(express.static(documentsPath))
 
 
 app.use('/api/user', userRoutes);
+app.use('/api/guard', guardRoutes);
+app.use('/api/admin', adminRoutes);
 // app.use('/api', sAdminRouter);
 
 app.get('/', (req, res) => res.send('<h1>Parking_Spot Running</h1><p>Welcome to the Parking_Spot server!</p>'));

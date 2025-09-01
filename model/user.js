@@ -16,13 +16,9 @@ const UserSchema = new mongoose.Schema({
     required: true,
     unique: true
   },
-  email: { 
-    type: String,
-    unique: true 
-  },
   role: {
     type: String,
-    enum: ['Admin', 'User'],
+    enum: ['Admin', 'User','Guard'],
     required: true,
     default: 'User'
   },
@@ -39,6 +35,14 @@ const UserSchema = new mongoose.Schema({
     type: String
   },
   responseTime:{
+    type: String
+  },
+  addedBy:{
+    type: String,
+    required: true,
+    default:'Sign In'
+  },
+  spotId:{
     type: String
   }
   

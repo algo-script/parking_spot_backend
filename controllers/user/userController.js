@@ -1,6 +1,6 @@
-const User = require("../model/user");
-const ParkingSpot = require("../model/parkingSpot");
-const generateToken = require("../utils/helperFunctions");
+const User = require("../../model/user");
+const ParkingSpot = require("../../model/parkingSpot");
+const generateToken = require("../../utils/helperFunctions");
 
 
 exports.registerUser = async (req, res) => {
@@ -150,7 +150,6 @@ exports.updateUserProfile = async (req, res) => {
         message: "Mobile number already in use",
       });
     }
-    console.log(req.files);
 
     user.name = name;
     user.email = email;
@@ -168,6 +167,103 @@ exports.updateUserProfile = async (req, res) => {
     });
   } catch (error) {
     console.error("Error updating user profile:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+
+exports.addGuardDetails = async(req,res)=>{
+  try {
+    const { name, mobile, email, password, spotId } = req.body;
+
+    // Basic validation
+    if (!name || !mobile || !email || !password ||!spotId) {
+      return res.status(400).json({ success: false, message: "All required fields must be provided" });
+    }
+
+    // Check for unique email
+    const existingEmail = await User.findOne({ email });
+    if (existingEmail) {
+      return res.status(400).json({ success: false, message: "Email already exists" });
+    }
+
+    // Check for unique mobile
+    const existingMobile = await User.findOne({ mobile });
+    if (existingMobile) {
+      return res.status(400).json({ success: false, message: "Mobile number already exists" });
+    }
+
+    // Create new Guard
+    const guard = new User({
+      name,
+      mobile,
+      email,
+      password,
+      role: "Guard",
+      spotId: spotId ,
+      addedBy: req.user._id 
+    });
+
+    await guard.save();
+
+    return res.status(201).json({
+      success: true,
+      message: "Guard added successfully",
+    });
+  } catch (error) {
+    console.error("Error addGuardDetails:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+}
+
+exports.updateGuardDetails = async (req, res) => {
+  try {
+    const { guardId,name, mobile, email, password, spotId } = req.body;
+
+    // Find guard by ID
+    const guard = await User.findOne({ _id: guardId, role: "Guard" });
+    if (!guard) {
+      return res.status(404).json({ success: false, message: "Guard not found" });
+    }
+
+    // Check for unique email (if updated)
+    if (email && email !== guard.email) {
+      const existingEmail = await User.findOne({ email });
+      if (existingEmail) {
+        return res.status(400).json({ success: false, message: "Email already exists" });
+      }
+      guard.email = email;
+    }
+
+    // Check for unique mobile (if updated)
+    if (mobile && mobile !== guard.mobile) {
+      const existingMobile = await User.findOne({ mobile });
+      if (existingMobile) {
+        return res.status(400).json({ success: false, message: "Mobile number already exists" });
+      }
+      guard.mobile = mobile;
+    }
+
+    // Update other fields
+    if (name) guard.name = name;
+    if (password) {
+      guard.password = password; 
+    }
+
+    await guard.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Guard details updated successfully",
+    });
+  } catch (error) {
+    console.error("Error updateGuardDetails:", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error",
