@@ -4,7 +4,7 @@ const User = require("../../model/user");
 const Booking = require("../../model/booking");
 const Vehicle = require("../../model/vehicle");
 const QRCode = require("qrcode");
-const { response } = require("express");
+
 
 exports.competeBooking = async (req, res) => {
   try {
@@ -34,18 +34,39 @@ exports.competeBooking = async (req, res) => {
       error: error.message,
     });
   }
-};
+};  
 
 exports.verifyBooking = async (req, res) => {
   try {
     const { bookingId } = req.body;
-    const bookingdata = await Booking.findOne({ bookingId })
+    const bookingdata = await Booking.findOne({ bookingId ,status: { $ne: "cancelled" }})
       .populate("user")
       .populate("vehicle");
-    if (!bookingdata) {
+     
+      if (!bookingdata) {
+        return res.status(404).json({
+          success: false,
+          message: "Invalid verification data",
+        });
+      }
+      
+
+    if(bookingdata.parkingSpot!==req.user.spotId){
       return res.status(404).json({
         success: false,
-        message: "Invalid verification data",
+        message: "Not allow to acess this booking details",
+      });
+    }
+    // Combine booking date + endTime
+    const bookingEnd = moment(
+      `${moment(bookingdata.date).format("YYYY-MM-DD")} ${bookingdata.endTime}`,
+      "YYYY-MM-DD HH:mm"
+    );
+
+    if (moment().isAfter(bookingEnd)) {
+      return res.status(400).json({
+        success: false,
+        message: "Booking time has passed, cannot verify",
       });
     }
 
@@ -99,25 +120,46 @@ exports.recentAndUpcomingBooking = async (req, res) => {
     const { activeTab } = req.query;
 
     const now = moment();
-    const sevenDaysAgo = moment().subtract(10, "days");
+    const tenDaysAgo = moment().subtract(10, "days");
 
-    let query = { parkingSpot: req.user.spotId };
+    let query = { parkingSpot: req.user.spotId, status: { $ne: "cancelled" } };
 
     if (activeTab === "upcoming") {
       // Start time after now → upcoming
-      query.date = { $gte: now.startOf("day").toDate() }; 
+      query.date = { $gte: now.startOf("day").toDate() };
     } else if (activeTab === "recent") {
       // End time before now but after 7 days ago → recent
       query.date = {
-        $gte: sevenDaysAgo.startOf("day").toDate(),
+        $gte: tenDaysAgo.startOf("day").toDate(),
         $lte: now.endOf("day").toDate(),
       };
     }
 
-    const bookings = await Booking.find(query)
+    let bookings = await Booking.find(query)
       .populate("user", "name email mobile")
       .populate("vehicle", "vehicleNumber model")
       .sort({ date: activeTab === "upcoming" ? 1 : -1 }); // upcoming → ascending, recent → descending
+
+    //  Now apply time filter in JS
+    bookings = bookings.filter((b) => {
+      const endDateTime = moment(
+        `${moment(b.date).format("YYYY-MM-DD")} ${b.endTime}`,
+        "YYYY-MM-DD HH:mm"
+      );
+      // console.log(startDateTime,endDateTime);
+
+      if (activeTab === "upcoming" && b.status !== "completed") {
+        return endDateTime.isAfter(moment());
+      } else if (activeTab === "recent") {
+        return (
+          (endDateTime.isBefore(moment()) &&
+            endDateTime.isAfter(moment().subtract(10, "days"))) ||
+          (b.status === "completed" &&
+            endDateTime.isAfter(moment().subtract(10, "days")))
+        );
+      }
+      return false;
+    });
 
     res.json({
       success: true,

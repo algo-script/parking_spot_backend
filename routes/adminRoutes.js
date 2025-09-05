@@ -5,10 +5,6 @@ const { upload } = require('../multer/multerconfig');
 const { getUserData } = require('../controllers/admin/userController');
 
 
-
-
-// router.get("/guarddashboard",authenticateToken,authorizeRoles("Admin"),getspotWithCurrentBooking)
-
 router.get("/userdata",authenticateToken,authorizeRoles("Admin"),getUserData)
 
 

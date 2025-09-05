@@ -338,6 +338,8 @@ exports.toggleAvailability = async (req, res) => {
 };
 
 exports.findNearbyParkingSpots = async (req, res) => {
+  
+  
   try {
     const { latitude, longitude, startTime, endTime, maxPrice, selectedDate } =
       req.query;
@@ -402,7 +404,7 @@ exports.findNearbyParkingSpots = async (req, res) => {
       query.hourlyRate = { $lte: parseFloat(maxPrice) };
     }
     // ✅ Availability filter (weekday & spot hours)
-    if (selectedDate) {
+    if (selectedDate || startTime || endTime) {
       query.$and = [
         {
           $expr: {
@@ -414,15 +416,6 @@ exports.findNearbyParkingSpots = async (req, res) => {
         },
       ];
     } else {
-      // const now = moment().format("HH:mm");
-      // query.$or = [
-      //   {
-      //     "timeAvailability.start": { $gte:now},
-      //   },
-      //   {
-      //     "timeAvailability.end": { $lte:now },
-      //   },
-      // ];
       const now = moment().format("HH:mm");
       query.$and = [
         {
@@ -493,7 +486,7 @@ exports.getParkingSpotById = async (req, res) => {
       description: spot.description,
       hourlyRate: spot.hourlyRate,
       isAvailable: spot.isAvailable,
-      dailyRate: Math.round(spot.hourlyRate * 8 * 0.8), // Example calculation for daily rate
+      // dailyRate: Math.round(spot.hourlyRate * 8 * 0.8), // Example calculation for daily rate
       coordinates: {
         lat: spot.location.coordinates[1],
         lng: spot.location.coordinates[0],
@@ -517,33 +510,33 @@ exports.getParkingSpotById = async (req, res) => {
         rating: 4.8, // Default rating
         reviewCount: 124, // Default count
         joinedDate: owner.createdAt.toISOString().split("T")[0],
-        responseTime: owner.responseTime || "Within an hour",
+        responseTime: owner.responseTime,
         avatar: owner?.profileImage,
         // "https://randomuser.me/api/portraits/men/32.jpg",
       },
       images:
-        spot.images.length > 0
-          ? spot.images
-          : [
-              "https://images.unsplash.com/photo-1470224114660-3f6686c562eb?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxzZWFyY2h8MTB8fHBhcmtpbmd8ZW58MHx8MHx8&auto=format&fit=crop&w=800&q=60",
-              "https://images.unsplash.com/photo-1573348722427-f1d6819fdf98?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxzZWFyY2h8NHx8cGFya2luZ3xlbnwwfHwwfHw%3D&auto=format&fit=crop&w=800&q=60",
-            ],
-      reviews: [
-        {
-          id: "rev-123",
-          user: "Sarah M.",
-          rating: 5,
-          date: "2023-04-15",
-          comment: "Great spot! Easy to find and very convenient location.",
-        },
-        {
-          id: "rev-124",
-          user: "David L.",
-          rating: 4,
-          date: "2023-03-22",
-          comment: "Good value for the area. The owner was very responsive.",
-        },
-      ],
+        // spot.images.length > 0
+          spot.images
+          // : [
+          //     "https://images.unsplash.com/photo-1470224114660-3f6686c562eb?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxzZWFyY2h8MTB8fHBhcmtpbmd8ZW58MHx8MHx8&auto=format&fit=crop&w=800&q=60",
+          //     "https://images.unsplash.com/photo-1573348722427-f1d6819fdf98?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxzZWFyY2h8NHx8cGFya2luZ3xlbnwwfHwwfHw%3D&auto=format&fit=crop&w=800&q=60",
+          //   ],
+      // reviews: [
+      //   {
+      //     id: "rev-123",
+      //     user: "Sarah M.",
+      //     rating: 5,
+      //     date: "2023-04-15",
+      //     comment: "Great spot! Easy to find and very convenient location.",
+      //   },
+      //   {
+      //     id: "rev-124",
+      //     user: "David L.",
+      //     rating: 4,
+      //     date: "2023-03-22",
+      //     comment: "Good value for the area. The owner was very responsive.",
+      //   },
+      // ],
     };
 
     res.json({
@@ -559,6 +552,16 @@ exports.getParkingSpotById = async (req, res) => {
     });
   }
 };
+
+ // const now = moment().format("HH:mm");
+      // query.$or = [
+      //   {
+      //     "timeAvailability.start": { $gte:now},
+      //   },
+      //   {
+      //     "timeAvailability.end": { $lte:now },
+      //   },
+      // ];
 
 // query.$or = [
 //   {

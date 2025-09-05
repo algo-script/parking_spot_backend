@@ -41,7 +41,7 @@ exports.confirmBooking = async (req, res) => {
         });
     }
 
-    // ✅ Check time conflict with existing bookings
+    //  Check time conflict with existing bookings
     const conflictingBooking = await Booking.findOne({
       parkingSpot: parkingSpotId,
       date: new Date(date),
@@ -177,6 +177,12 @@ exports.cancelBooking = async (req, res) => {
   }
 };
 
+const roundToNext30 = (time) => {
+  const minutes = time.minutes();
+  const add = minutes % 30 === 0 ? 0 : 30 - (minutes % 30);
+  return time.clone().add(add, "minutes").seconds(0).milliseconds(0);
+};
+
 exports.getAvailableTimes = async (req, res) => {
   try {
     const { parkingSpotId, date } = req.body;
@@ -202,7 +208,7 @@ exports.getAvailableTimes = async (req, res) => {
     let opening = moment(spot.timeAvailability.start, "HH:mm");
     let closing = moment(spot.timeAvailability.end, "HH:mm");
 
-     // ⏰ If it's today, shift opening to "now" (but within closing hours)    
+     //  If it's today, shift opening to "now" (but within closing hours)    
      if (reqDate.isSame(moment(), "day")) {
       const now = moment();
       if (now.isAfter(opening) && now.isBefore(closing)) {
@@ -228,30 +234,54 @@ exports.getAvailableTimes = async (req, res) => {
     let freeSlots = [];
     let lastEnd = opening;
 
+   
     for (let booking of bookedRanges) {
       if (lastEnd.isBefore(booking.start)) {
-        freeSlots.push({
-          start: lastEnd.format("HH:mm"),
-          end: booking.start.format("HH:mm"),
-        });
+        const slotStart = roundToNext30(lastEnd);
+        if (slotStart.isBefore(booking.start)) {
+          freeSlots.push({
+            start: slotStart.format("HH:mm"),
+            end: booking.start.format("HH:mm"),
+          });
+        }
       }
       lastEnd = moment.max(lastEnd, booking.end);
     }
     
     if (lastEnd.isBefore(closing)) {
-      freeSlots.push({
-        start: lastEnd.format("HH:mm"),
-        end: closing.format("HH:mm"),
-      });
+      const slotStart = roundToNext30(lastEnd);
+      if (slotStart.isBefore(closing)) {
+        freeSlots.push({
+          start: slotStart.format("HH:mm"),
+          end: closing.format("HH:mm"),
+        });
+      }
     }
   
     return res.json({
       success: freeSlots.length > 0,
       slots: freeSlots,
-      message: "fetch free slot details successfully",
+      message: freeSlots.length > 0?"fetch free slot details successfully":"Not available on this day all are booked",
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error", error });
   }
 };
+
+ // for (let booking of bookedRanges) {
+    //   if (lastEnd.isBefore(booking.start)) {
+    //     freeSlots.push({
+    //       start: lastEnd.format("HH:mm"),
+    //       end: booking.start.format("HH:mm"),
+    //     });
+    //   }
+    //   lastEnd = moment.max(lastEnd, booking.end);
+    // }
+    
+    // if (lastEnd.isBefore(closing)) {
+    //   freeSlots.push({
+    //     start: lastEnd.format("HH:mm"),
+    //     end: closing.format("HH:mm"),
+    //   });
+    // }
